@@ -1,2 +1,4 @@
 2026-07-02 22.49.30.jpg
 *.jpg
+!anna-gaikovich/**/*.jpg
+.DS_Store
