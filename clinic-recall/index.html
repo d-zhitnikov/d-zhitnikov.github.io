@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recura — возвращаем пациентов, которые выпали из лечения</title>
+<meta name="description" content="B2B-инструмент для частных клиник. Анализируем выгрузку из МИС, находим пациентов с клиническим поводом вернуться и даём администратору ежедневную очередь звонков со скриптом. Пилот для клиник Казахстана.">
+<meta property="og:title" content="Recura — деньги, которые клиника уже заработала">
+<meta property="og:description" content="Находим пациентов, выпавших из лечения, и возвращаем их в клинику. Пилот для частных клиник Казахстана.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23135C43'/%3E%3Cpath d='M9 21V11h5.4c2.2 0 3.6 1.3 3.6 3.3 0 1.5-.8 2.6-2.1 3.1L21 21h-2.9l-2.4-3.2H12V21H9zm3-5.4h2.1c1 0 1.6-.5 1.6-1.3 0-.8-.6-1.3-1.6-1.3H12v2.6z' fill='%23F7F7F5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F7F5;
+    --surface:#FFFFFF;
+    --ink:#14181A;
+    --muted:#5A6468;
+    --accent:#135C43;
+    --accent-deep:#0E4634;
+    --accent-soft:#E7F0EB;
+    --accent-line:#CFE0D7;
+    --border:#E5E5E0;
+    --amber:#B4741F;
+    --radius:14px;
+    --maxw:1120px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Manrope",-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  h1,h2,h3{font-family:"Lora",Georgia,serif;font-weight:600;line-height:1.15;letter-spacing:-.01em;margin:0}
+  p{margin:0}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+  .eyebrow{
+    font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--accent);display:inline-flex;align-items:center;gap:9px;
+  }
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--accent-line)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    font-family:"Manrope";font-weight:600;font-size:15px;
+    padding:14px 24px;border-radius:100px;cursor:pointer;border:1px solid transparent;
+    transition:transform .15s ease,background .2s ease,box-shadow .2s ease;
+  }
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-deep);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--border)}
+  .btn-ghost:hover{border-color:var(--ink)}
+
+  /* NAV */
+  header.nav{position:sticky;top:0;z-index:50;background:rgba(247,247,245,.82);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--border)}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:68px}
+  .logo{display:flex;align-items:center;gap:11px;font-family:"Lora";font-weight:600;font-size:21px;letter-spacing:-.01em}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:"Lora";font-weight:600;font-size:17px}
+  .nav-links{display:flex;gap:34px;align-items:center}
+  .nav-links a{font-size:15px;color:var(--muted);font-weight:500;transition:color .2s}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{display:flex;align-items:center;gap:18px}
+
+  /* HERO */
+  .hero{padding:84px 0 64px}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  .hero h1{font-size:clamp(34px,4.4vw,54px);margin:22px 0 24px}
+  .hero .lead{font-size:19px;color:var(--muted);max-width:36ch}
+  .hero .cta-row{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+  .hero .reassure{margin-top:22px;font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block}
+
+  /* QUEUE MOCK */
+  .queue{
+    background:var(--surface);border:1px solid var(--border);border-radius:18px;
+    box-shadow:0 1px 0 rgba(20,24,26,.02),0 24px 48px -28px rgba(20,24,26,.22);
+    overflow:hidden;
+  }
+  .queue-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+  .queue-head .title{font-weight:600;font-size:15px}
+  .queue-head .title span{color:var(--muted);font-weight:500}
+  .queue-head .count{font-size:13px;color:var(--accent);background:var(--accent-soft);padding:5px 11px;border-radius:100px;font-weight:600}
+  .qrow{display:flex;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);align-items:flex-start}
+  .qrow:last-child{border-bottom:0}
+  .qprio{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;margin-top:2px}
+  .p1{background:var(--accent)}.p2{background:#3E7C66}.p3{background:#9DB4AB}
+  .qbody{flex:1;min-width:0}
+  .qname{font-weight:600;font-size:15px}
+  .qreason{font-size:13.5px;color:var(--muted);margin-top:2px}
+  .qtag{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--amber);background:#F6EEDF;padding:3px 8px;border-radius:6px;margin-top:8px}
+  .qval{flex:none;text-align:right;font-weight:600;font-size:14px;color:var(--ink)}
+  .qval span{display:block;font-size:11.5px;color:var(--muted);font-weight:500}
+  .queue-foot{padding:14px 20px;background:#FBFBFA;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+
+  /* MARQUEE STATS */
+  .band{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface)}
+  .band-in{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  .stat{padding:34px 28px;border-right:1px solid var(--border)}
+  .stat:last-child{border-right:0}
+  .stat .num{font-family:"Lora";font-size:34px;font-weight:600;color:var(--accent)}
+  .stat .lbl{font-size:14.5px;color:var(--muted);margin-top:4px;max-width:30ch}
+
+  /* SECTIONS */
+  section{padding:90px 0}
+  .sec-head{max-width:60ch}
+  .sec-head h2{font-size:clamp(28px,3.2vw,38px);margin:16px 0 0}
+  .sec-head .lead{color:var(--muted);font-size:18px;margin-top:16px}
+
+  /* PROBLEM */
+  .problem{background:var(--ink);color:#EDEEEC}
+  .problem .eyebrow{color:#8FB6A6}
+  .problem .eyebrow::before{background:#3A4A44}
+  .problem h2{color:#fff}
+  .problem .lead{color:#A9B2AF}
+  .prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:52px}
+  .prob-card{border:1px solid #2A3230;border-radius:var(--radius);padding:28px}
+  .prob-card .k{font-family:"Lora";font-size:30px;color:#fff}
+  .prob-card .t{font-size:15px;color:#AEB6B3;margin-top:10px;line-height:1.55}
+
+  /* STEPS */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:30px}
+  .step .n{font-family:"Lora";font-size:15px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .n::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--accent)}
+  .step h3{font-size:20px;margin:16px 0 10px}
+  .step p{color:var(--muted);font-size:15.5px}
+
+  /* TRIGGERS */
+  .triggers{background:var(--accent-soft)}
+  .trig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:52px}
+  .trig{background:var(--surface);border:1px solid var(--accent-line);border-radius:var(--radius);padding:28px}
+  .trig .ic{width:44px;height:44px;border-radius:11px;background:var(--accent-soft);display:grid;place-items:center;color:var(--accent);margin-bottom:18px}
+  .trig h3{font-size:19px;margin-bottom:9px}
+  .trig p{color:var(--muted);font-size:15px}
+
+  /* ECONOMICS */
+  .econ-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:56px;align-items:center;margin-top:20px}
+  .calc{background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+  .calc-row{display:flex;justify-content:space-between;align-items:center;padding:18px 26px;border-bottom:1px solid var(--border);font-size:15.5px}
+  .calc-row span{color:var(--muted)}
+  .calc-row b{font-weight:600;font-variant-numeric:tabular-nums}
+  .calc-row.total{background:var(--accent);color:#fff;padding:24px 26px}
+  .calc-row.total span{color:#CFE0D7}
+  .calc-row.total b{font-family:"Lora";font-size:26px}
+  .econ-points{list-style:none;padding:0;margin:26px 0 0}
+  .econ-points li{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);font-size:16px}
+  .econ-points li:last-child{border-bottom:0}
+  .econ-points .chk{flex:none;color:var(--accent);margin-top:3px}
+
+  /* CARE */
+  .care-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .care-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:34px}
+  .care-card .quote{font-family:"Lora";font-style:italic;font-size:22px;line-height:1.45;color:var(--ink)}
+  .care-card .by{margin-top:20px;font-size:14px;color:var(--muted)}
+
+  /* PILOT */
+  .pilot{background:var(--ink);color:#EDEEEC}
+  .pilot .eyebrow{color:#8FB6A6}.pilot .eyebrow::before{background:#3A4A44}
+  .pilot h2{color:#fff}.pilot .lead{color:#A9B2AF}
+  .pilot-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:48px}
+  .pilot-card{border:1px solid #2A3230;border-radius:var(--radius);padding:28px}
+  .pilot-card h3{color:#fff;font-size:20px;margin-bottom:16px}
+  .pilot-list{list-style:none;padding:0;margin:0}
+  .pilot-list li{display:flex;gap:12px;padding:11px 0;font-size:15.5px;color:#C6CDCA;border-bottom:1px solid #232B29}
+  .pilot-list li:last-child{border-bottom:0}
+  .pilot-list .chk{color:#8FB6A6;flex:none;margin-top:2px}
+
+  /* FORM */
+  .form-sec{padding:96px 0}
+  .form-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:60px}
+  .form-intro h2{font-size:clamp(28px,3.2vw,38px)}
+  .form-intro p{color:var(--muted);margin-top:16px;font-size:17px}
+  .contact-line{margin-top:28px;font-size:15px}
+  .contact-line a{color:var(--accent);font-weight:600;border-bottom:1px solid var(--accent-line)}
+  form.lead-form{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px}
+  .field{margin-bottom:18px}
+  .field label{display:block;font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:7px}
+  .field input,.field select,.field textarea{
+    width:100%;font-family:"Manrope";font-size:15px;color:var(--ink);
+    padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:#FCFCFB;
+    transition:border-color .2s,box-shadow .2s;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .field textarea{resize:vertical;min-height:84px}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  form .btn-primary{width:100%;margin-top:6px;padding:16px}
+  .form-note{font-size:12.5px;color:var(--muted);margin-top:14px;text-align:center}
+
+  /* FOOTER */
+  footer{border-top:1px solid var(--border);padding:44px 0;color:var(--muted);font-size:14px}
+  .foot-in{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+  .foot-logo{display:flex;align-items:center;gap:10px;font-family:"Lora";font-weight:600;font-size:18px;color:var(--ink)}
+
+  @media(max-width:900px){
+    .hero-grid,.econ-grid,.care-grid,.form-grid{grid-template-columns:1fr;gap:40px}
+    .band-in,.prob-grid,.steps,.trig-grid,.pilot-grid{grid-template-columns:1fr}
+    .stat{border-right:0;border-bottom:1px solid var(--border)}
+    .nav-links{display:none}
+    .hero{padding:56px 0 48px}
+    section{padding:64px 0}
+    .care-card .quote{font-size:19px}
+  }
+  @media(max-width:560px){
+    .field-row{grid-template-columns:1fr}
+    .wrap{padding:0 20px}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="#top" class="logo"><span class="mark">R</span>Recura</a>
+    <nav class="nav-links">
+      <a href="#how">Как это работает</a>
+      <a href="#triggers">Кого возвращаем</a>
+      <a href="#economics">Экономика</a>
+      <a href="#pilot">Пилот</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="#apply" class="btn btn-primary">Заявка в пилот</a>
+    </div>
+  </div>
+</header>
+
+<a id="top"></a>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Пилот для частных клиник · Казахстан</span>
+      <h1>Ваши пациенты уже в базе.<br>Возвращаем тех, кто выпал из лечения.</h1>
+      <p class="lead">Анализируем выгрузку пациентов из вашей МИС и находим тех, у кого есть конкретный клинический повод вернуться. Администратор получает ежедневную очередь: кому позвонить, почему именно ему и с каким скриптом.</p>
+      <div class="cta-row">
+        <a href="#apply" class="btn btn-primary">Взять клинику в пилот</a>
+        <a href="#how" class="btn btn-ghost">Как это работает</a>
+      </div>
+      <div class="reassure"><span class="dot"></span> Без замены вашей МИС. Работаем с выгрузкой — интеграция не нужна для старта.</div>
+    </div>
+
+    <!-- Daily queue mock -->
+    <div class="queue" aria-hidden="true">
+      <div class="queue-head">
+        <div class="title">Очередь на сегодня <span>· администратор</span></div>
+        <div class="count">18 звонков</div>
+      </div>
+      <div class="qrow">
+        <div class="qprio p1">1</div>
+        <div class="qbody">
+          <div class="qname">Пациент А., 34</div>
+          <div class="qreason">Просрочен recall после проф. чистки — 8 месяцев</div>
+          <div class="qtag">Скрипт: приглашение на гигиену</div>
+        </div>
+        <div class="qval">≈ 25 000 ₸<span>ожид. визит</span></div>
+      </div>
+      <div class="qrow">
+        <div class="qprio p1">2</div>
+        <div class="qbody">
+          <div class="qname">Пациент Б., 51</div>
+          <div class="qreason">Незавершённый план лечения — 2 из 5 этапов</div>
+          <div class="qtag">Скрипт: возврат к плану</div>
+        </div>
+        <div class="qval">≈ 140 000 ₸<span>остаток плана</span></div>
+      </div>
+      <div class="qrow">
+        <div class="qprio p2">3</div>
+        <div class="qbody">
+          <div class="qname">Пациент В., 45</div>
+          <div class="qreason">Возрастной скрининг не пройден за 14 месяцев</div>
+          <div class="qtag">Скрипт: чекап</div>
+        </div>
+        <div class="qval">≈ 18 000 ₸<span>ожид. визит</span></div>
+      </div>
+      <div class="queue-foot"><span class="dot"></span> Каждый исход звонка фиксируется — это операционка и данные для модели.</div>
+    </div>
+  </div>
+</section>
+
+<!-- BAND -->
+<div class="band">
+  <div class="wrap band-in">
+    <div class="stat">
+      <div class="num">30–50%</div>
+      <div class="lbl">базы частной клиники — пациенты, выпавшие из лечения за 12+ месяцев</div>
+    </div>
+    <div class="stat">
+      <div class="num">10–20%</div>
+      <div class="lbl">из них возвращаются при адресном звонке с клиническим поводом</div>
+    </div>
+    <div class="stat">
+      <div class="num">0 ₸</div>
+      <div class="lbl">на привлечение — это пациенты, за которых клиника уже заплатила</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem" id="problem">
+  <div class="wrap">
+    <span class="eyebrow">Проблема</span>
+    <div class="sec-head">
+      <h2>Клиника теряет деньги, которые уже заработала</h2>
+      <p class="lead">Привлечь пациента дорого. Но большая часть базы после первого-второго визита тихо исчезает — без напоминания, без повода вернуться. Это не новые лиды, это уже оплаченный трафик, который уходит к конкуренту или просто перестаёт лечиться.</p>
+    </div>
+    <div class="prob-grid">
+      <div class="prob-card">
+        <div class="k">Незаметно</div>
+        <div class="t">Отток не виден в отчётах: пациент не «отписывается», он просто не приходит. МИС хранит эти данные, но никто их не разбирает вручную.</div>
+      </div>
+      <div class="prob-card">
+        <div class="k">Некому</div>
+        <div class="t">У администратора нет времени поднимать базу и решать, кому звонить. Обзвон «всех подряд» выжигает базу и не работает.</div>
+      </div>
+      <div class="prob-card">
+        <div class="k">Незавершённо</div>
+        <div class="t">Планы лечения бросают на середине, recall после услуг не отслеживается, скрининги по возрасту не назначаются. Повод есть — им не пользуются.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section id="how">
+  <div class="wrap">
+    <span class="eyebrow">Как это работает</span>
+    <div class="sec-head">
+      <h2>Три шага — от выгрузки до звонка</h2>
+      <p class="lead">Не CRM, которую нужно внедрять полгода. Начинаем с одной выгрузки и приносим готовую очередь звонков.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="n">Шаг 1</div>
+        <h3>Выгрузка из МИС</h3>
+        <p>Вы отдаёте обезличенную выгрузку базы пациентов из вашей медицинской системы. Никакой замены софта и интеграции для старта не требуется.</p>
+      </div>
+      <div class="step">
+        <div class="n">Шаг 2</div>
+        <h3>Приоритизированная очередь</h3>
+        <p>Мы находим пациентов с конкретным клиническим поводом вернуться и ранжируем их по вероятности возврата и ценности визита. Каждому — причина и готовый скрипт.</p>
+      </div>
+      <div class="step">
+        <div class="n">Шаг 3</div>
+        <h3>Звонок и фиксация исхода</h3>
+        <p>Администратор звонит по списку и отмечает результат: записался, перезвонить, отказ. Данные копятся — операционка клиники и обучающая выборка для модели.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRIGGERS -->
+<section class="triggers" id="triggers">
+  <div class="wrap">
+    <span class="eyebrow">Кого возвращаем</span>
+    <div class="sec-head">
+      <h2>Не рассылка «всем», а клинический повод</h2>
+      <p class="lead">Мы поднимаем только тех, кому действительно есть зачем вернуться. Поэтому звонок звучит как забота, а не как навязчивая продажа.</p>
+    </div>
+    <div class="trig-grid">
+      <div class="trig">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <h3>Просроченный recall</h3>
+        <p>После услуги нужен повторный визит в срок — гигиена, контроль, замена. Пациент про него забыл, а система нет.</p>
+      </div>
+      <div class="trig">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <h3>Незавершённый план лечения</h3>
+        <p>Пациент прошёл часть этапов и пропал. Остаток плана — это и его здоровье, и уже согласованная выручка клиники.</p>
+      </div>
+      <div class="trig">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        </div>
+        <h3>Возрастной чекап / скрининг</h3>
+        <p>По возрасту и профилю пациенту показан профилактический осмотр или скрининг, который давно не проходили.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ECONOMICS -->
+<section id="economics">
+  <div class="wrap">
+    <span class="eyebrow">Экономика</span>
+    <div class="sec-head">
+      <h2>Считаем в деньгах, а не в «активностях»</h2>
+      <p class="lead">Ориентировочный расчёт для клиники средней базы. Цифры — иллюстрация на бенчмарках, реальные считаем на вашей выгрузке в пилоте.</p>
+    </div>
+    <div class="econ-grid">
+      <div class="calc">
+        <div class="calc-row"><span>База пациентов</span><b>5 000</b></div>
+        <div class="calc-row"><span>Выпавшие из лечения (≈24%)</span><b>1 200</b></div>
+        <div class="calc-row"><span>С клиническим поводом вернуться</span><b>≈ 700</b></div>
+        <div class="calc-row"><span>Возврат при адресном обзвоне (12%)</span><b>≈ 84 визита</b></div>
+        <div class="calc-row"><span>Средний чек визита</span><b>25 000 ₸</b></div>
+        <div class="calc-row total"><span>Возвращённая выручка / квартал</span><b>≈ 2,1 млн ₸</b></div>
+      </div>
+      <div>
+        <ul class="econ-points">
+          <li><span class="chk">✓</span> Это выручка без затрат на привлечение — пациенты уже в базе клиники.</li>
+          <li><span class="chk">✓</span> Незавершённые планы лечения дают чек в разы выше среднего визита.</li>
+          <li><span class="chk">✓</span> Приоритизация экономит время администратора: звонки только по «горячим» поводам.</li>
+          <li><span class="chk">✓</span> Каждый исход фиксируется — видно конверсию, окупаемость и точки роста.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CARE -->
+<section class="triggers" id="care">
+  <div class="wrap">
+    <span class="eyebrow">Забота о пациентах</span>
+    <div class="care-grid">
+      <div>
+        <div class="sec-head">
+          <h2>Деньги клиники и здоровье пациента — по одну сторону</h2>
+          <p class="lead">Мы не придумываем повод для звонка. Мы напоминаем человеку о лечении, которое ему действительно нужно и которое он сам начал или отложил. Клиника зарабатывает ровно тогда, когда пациент возвращается к своему здоровью.</p>
+        </div>
+      </div>
+      <div class="care-card">
+        <div class="quote">«Здравствуйте! Вы полгода назад начали лечение, остался последний этап. Записать вас, пока не пришлось начинать заново?»</div>
+        <div class="by">Пример скрипта возврата к незавершённому плану. Пациент слышит заботу, клиника — возвращённую выручку.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILOT -->
+<section class="pilot" id="pilot">
+  <div class="wrap">
+    <span class="eyebrow">Пилот · Казахстан</span>
+    <div class="sec-head">
+      <h2>Ищем несколько клиник в пилот</h2>
+      <p class="lead">Берём ограниченное число частных клиник, чтобы отработать продукт на реальных базах. Вы получаете возвращённых пациентов, мы — данные и обратную связь.</p>
+    </div>
+    <div class="pilot-grid">
+      <div class="pilot-card">
+        <h3>Что получает клиника</h3>
+        <ul class="pilot-list">
+          <li><span class="chk">✓</span> Разбор вашей базы и ежедневную очередь звонков со скриптами</li>
+          <li><span class="chk">✓</span> Возвращённых пациентов и понятную экономику по каждому исходу</li>
+          <li><span class="chk">✓</span> Специальные условия участников пилота</li>
+          <li><span class="chk">✓</span> Никакой замены МИС и долгого внедрения</li>
+        </ul>
+      </div>
+      <div class="pilot-card">
+        <h3>Что нужно от клиники</h3>
+        <ul class="pilot-list">
+          <li><span class="chk">✓</span> Обезличенную выгрузку базы пациентов из МИС</li>
+          <li><span class="chk">✓</span> Администратора, который будет обзванивать по списку</li>
+          <li><span class="chk">✓</span> Обратную связь по скриптам и результатам</li>
+          <li><span class="chk">✓</span> 2–4 недели на пилотный цикл</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORM -->
+<section class="form-sec" id="apply">
+  <div class="wrap form-grid">
+    <div class="form-intro">
+      <span class="eyebrow">Заявка</span>
+      <h2>Взять клинику в пилот</h2>
+      <p>Оставьте контакты — вернёмся, обсудим вашу базу и покажем расчёт на реальных данных. Ни к чему не обязывает.</p>
+      <div class="contact-line">Или напишите напрямую: <a href="mailto:dan.zhitnik@gmail.com">dan.zhitnik@gmail.com</a></div>
+    </div>
+    <form class="lead-form" onsubmit="return submitLead(event)">
+      <div class="field-row">
+        <div class="field">
+          <label for="clinic">Клиника</label>
+          <input id="clinic" name="clinic" type="text" placeholder="Название клиники" required>
+        </div>
+        <div class="field">
+          <label for="city">Город</label>
+          <input id="city" name="city" type="text" placeholder="Алматы, Астана…" required>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="name">Ваше имя</label>
+          <input id="name" name="name" type="text" placeholder="Имя" required>
+        </div>
+        <div class="field">
+          <label for="contact">Телефон или почта</label>
+          <input id="contact" name="contact" type="text" placeholder="+7 … / email" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="mis">Какая у вас МИС</label>
+        <select id="mis" name="mis">
+          <option value="">Выберите или укажите в комментарии</option>
+          <option>Dentist / стоматологическая</option>
+          <option>1С-Медицина</option>
+          <option>МедЭлемент</option>
+          <option>Renovatio</option>
+          <option>Другая</option>
+          <option>Пока не знаю</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="msg">Комментарий (необязательно)</label>
+        <textarea id="msg" name="msg" placeholder="Профиль клиники, размер базы, вопросы"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Отправить заявку</button>
+      <div class="form-note">Нажимая «Отправить», откроется письмо с вашими данными — просто отправьте его.</div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-in">
+    <div class="foot-logo"><span class="mark" style="width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:15px">R</span>Recura</div>
+    <div>Инструмент возврата пациентов для частных клиник · Пилот в Казахстане · 2026</div>
+  </div>
+</footer>
+
+<script>
+  // Lead email destination — change to a business inbox when ready.
+  var LEAD_EMAIL = "dan.zhitnik@gmail.com";
+
+  function submitLead(e){
+    e.preventDefault();
+    var f = e.target;
+    var g = function(id){ return (f.querySelector('#'+id)||{}).value || '—'; };
+    var subject = 'Заявка в пилот Recura — ' + g('clinic');
+    var body =
+      'Клиника: ' + g('clinic') + '\n' +
+      'Город: ' + g('city') + '\n' +
+      'Имя: ' + g('name') + '\n' +
+      'Контакт: ' + g('contact') + '\n' +
+      'МИС: ' + g('mis') + '\n' +
+      'Комментарий: ' + g('msg') + '\n';
+    window.location.href = 'mailto:' + LEAD_EMAIL +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(body);
+    return false;
+  }
+</script>
+</body>
+</html>
