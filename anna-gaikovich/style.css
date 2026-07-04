@@ -265,22 +265,6 @@ footer > p { color: var(--gray); font-family: var(--serif); font-style: italic; 
   font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--gray);
 }
 
-.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 11vh 4vw; counter-reset: work; }
-.acts .work { margin-bottom: 0; }
-.acts .w-full { grid-column: 1 / -1; width: 100%; margin: 0 auto; }
-.acts .w-full img { max-height: 84vh; width: auto; max-width: 100%; margin: 0 auto; }
-.acts .w-late { margin-top: 10vh; }
-.acts .work figcaption { display: flex; flex-direction: column; align-items: flex-start; }
-.acts .work figcaption::before {
-  counter-increment: work; content: counter(work, decimal-leading-zero);
-  font-family: var(--serif); font-size: 15px; color: var(--red);
-  letter-spacing: .18em; margin-bottom: 8px;
-}
-.acts .w-full figcaption { align-items: center; text-align: center; }
-.stage .work figcaption em { font-size: 21px; }
-.stage .work img { transition: opacity .4s ease, transform .8s cubic-bezier(.2, .8, .2, 1); }
-.stage .work:hover img { opacity: 1; transform: scale(1.012); }
-
 .stage .quote-band { background: var(--red); }
 .stage .quote-band blockquote { color: #fff; }
 .stage .quote-band cite { color: rgba(255, 255, 255, .75); }
