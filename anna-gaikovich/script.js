@@ -25,6 +25,18 @@ const io = new IntersectionObserver(entries => {
 }, { threshold: 0.12 });
 works.forEach(w => io.observe(w));
 
+if (document.body.classList.contains('stage')) {
+  const cur = document.createElement('div');
+  cur.className = 'cursor-view';
+  cur.textContent = 'View';
+  document.body.appendChild(cur);
+  addEventListener('mousemove', e => {
+    cur.style.left = e.clientX + 'px';
+    cur.style.top = e.clientY + 'px';
+    cur.classList.toggle('on', !!e.target.closest('.work') && !document.getElementById('lb').classList.contains('open'));
+  }, { passive: true });
+}
+
 document.querySelectorAll('.filter').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelector('.filter.on').classList.remove('on');
